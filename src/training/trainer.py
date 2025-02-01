@@ -89,11 +89,27 @@ class Trainer:
         self._save_checkpoint(global_step)
         
     def _save_checkpoint(self, step: int):
-        checkpoint_path = Path(self.config.checkpoint_dir) / f'checkpoint-{step}.pt'
-        torch.save({
-            'step': step,
-            'model_state_dict': self.model.state_dict(),
-            'optimizer_state_dict': self.optimizer.state_dict(),
-            'scheduler_state_dict': self.scheduler.state_dict(),
-        }, checkpoint_path)
-        logger.info(f'Saved checkpoint: {checkpoint_path}')
+    # 1. Save the regular PyTorch checkpoint as before
+    checkpoint_path = Path(self.config.checkpoint_dir) / f'checkpoint-{step}.pt'
+    torch.save({
+        'step': step,
+        'model_state_dict': self.model.state_dict(),
+        'optimizer_state_dict': self.optimizer.state_dict(),
+        'scheduler_state_dict': self.scheduler.state_dict(),
+    }, checkpoint_path)
+    
+    # 2. Also save in HuggingFace format
+    hf_save_dir = Path(self.config.checkpoint_dir) / f'hf-checkpoint-{step}'
+    hf_save_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Save the model configuration
+    self.model.config.save_pretrained(hf_save_dir)
+    
+    # Save the model weights in HuggingFace format
+    self.model.save_pretrained(hf_save_dir)
+    
+    # If you're using a tokenizer, save it too
+    if hasattr(self, 'tokenizer'):
+        self.tokenizer.save_pretrained(hf_save_dir)
+        
+    logger.info(f'Saved checkpoints: {checkpoint_path} and {hf_save_dir}')

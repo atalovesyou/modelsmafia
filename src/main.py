@@ -50,9 +50,8 @@ def main():
     
     # Create dataset and dataloader
     dataset = HindiWikipediaDataset(
-        tokenizer=tokenizer,
-        max_length=model_config.max_sequence_length,
-        cache_dir=str(processed_data_dir)
+        config=model_config,
+        cache_dir='cache'
     )
     
     dataloader = DataLoader(
