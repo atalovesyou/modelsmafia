@@ -13,7 +13,7 @@ class ModelConfig:
     
 @dataclass
 class TrainingConfig:
-    batch_size: int = 32
+    batch_size: int = 2
     learning_rate: float = 1e-4
     warmup_steps: int = 10000
     max_steps: int = 1000000

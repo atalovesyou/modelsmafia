@@ -1,39 +1,48 @@
 # dataset.py
 import logging
-from torch.utils.data import Dataset, DataLoader
+from typing import Dict, Any
+from torch.utils.data import Dataset
 import torch
-from typing import Dict, List
-import wikipedia_dump_reader
+from datasets import load_dataset
 
 logger = logging.getLogger(__name__)
 
 class HindiWikipediaDataset(Dataset):
-    def __init__(self, dump_path: str, tokenizer: 'HindiTokenizer', max_length: int):
+    def __init__(self, tokenizer: Any, max_length: int, cache_dir: str = 'cache') -> None:
+        """
+        Initialize the Hindi Wikipedia dataset using HuggingFace's datasets.
+
+        Args:
+            tokenizer: A tokenizer instance with an encode method (accessed via tokenizer.tokenizer.encode)
+            max_length: Maximum sequence length for the model
+            cache_dir: Directory to store/cache dataset downloaded via HuggingFace's datasets
+        """
         self.tokenizer = tokenizer
         self.max_length = max_length
-        self.articles = self._load_wiki_dump(dump_path)
-        
-    def _load_wiki_dump(self, dump_path: str) -> List[str]:
-        logger.info('***** Starting Wikipedia dump loading...')
-        articles = wikipedia_dump_reader.extract_articles(dump_path, language='hi')
-        logger.info(f'***** Loaded {len(articles)} articles from Wikipedia dump.')
-        return articles
-    
+
+        logger.info('***** Loading Hindi Wikipedia dataset...')
+        # Load dataset from HuggingFace; split 'train' is used by default by the wikipedia dataset.
+        self.dataset = load_dataset('wikipedia', language='hi', date='20250101', cache_dir=cache_dir)['train']
+        logger.info(f'***** Loaded {len(self.dataset)} articles from Hindi Wikipedia dataset.')
+
     def __len__(self) -> int:
-        return len(self.articles)
-    
+        return len(self.dataset)
+
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
-        text = self.articles[idx]
-        encoding = self.tokenizer.tokenizer.encode(text)
-        
+        # Get the article text from the HuggingFace dataset dictionary
+        article_text = self.dataset[idx]['text']
+
+        # Encode the text using the provided tokenizer
+        encoding = self.tokenizer.tokenizer.encode(article_text)
         input_ids = encoding.ids[:self.max_length]
         attention_mask = [1] * len(input_ids)
-        
-        # Pad sequences
+
+        # Pad sequences to max_length
         padding_length = self.max_length - len(input_ids)
-        input_ids.extend([0] * padding_length)
-        attention_mask.extend([0] * padding_length)
-        
+        if padding_length > 0:
+            input_ids.extend([0] * padding_length)
+            attention_mask.extend([0] * padding_length)
+
         return {
             'input_ids': torch.tensor(input_ids),
             'attention_mask': torch.tensor(attention_mask)

@@ -24,11 +24,15 @@ class TransformerBlock(nn.Module):
         self.dropout = nn.Dropout(config.dropout)
 
     def forward(self, x: torch.Tensor, attention_mask: Optional[torch.Tensor] = None) -> torch.Tensor:
-        # Self-attention
-        attended = self.attention(x, x, x, attn_mask=attention_mask)[0]
+        # Convert the given attention mask (with 1's and 0's) to a key padding mask.
+        # The key_padding_mask expects a boolean tensor where True indicates positions that should be ignored.
+        key_padding_mask = (attention_mask == 0) if attention_mask is not None else None
+        
+        # Self-attention with key_padding_mask passed; note that attn_mask parameter is omitted.
+        attended = self.attention(x, x, x, key_padding_mask=key_padding_mask)[0]
         x = self.layer_norm1(x + self.dropout(attended))
         
-        # Feed-forward
+        # Feed-forward network
         ff_output = self.feed_forward(x)
         x = self.layer_norm2(x + self.dropout(ff_output))
         
