@@ -4,11 +4,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 
-from config import ModelConfig, TrainingConfig
-from tokenizer import HindiTokenizer
-from dataset import HindiWikipediaDataset
-from model import HindiTransformer
-from trainer import Trainer
+from configs.config import ModelConfig, TrainingConfig
+from tokenizer.tokenizer import HindiTokenizer
+from data.dataset import HindiWikipediaDataset
+from models.model import HindiTransformer
+from training.trainer import Trainer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -23,19 +23,36 @@ def main():
     model_config = ModelConfig()
     training_config = TrainingConfig()
     
+    # Setup data paths
+    src_dir = Path(__file__).parent
+    processed_data_dir = src_dir / 'dataset' / 'processed'
+    
+    # Create processed directory if it doesn't exist
+    processed_data_dir.mkdir(parents=True, exist_ok=True)
+    
+    # NOTE:
+    # We no longer require a local dump file since the dataset implementation uses load_dataset.
+    # However, if tokenizer training needs a file, you might maintain your existing code.
+    
     # Initialize tokenizer
     tokenizer = HindiTokenizer(vocab_size=model_config.vocab_size)
-    if Path('tokenizer.json').exists():
-        tokenizer.load('tokenizer.json')
+    tokenizer_path = processed_data_dir / 'tokenizer.json'
+    
+    if tokenizer_path.exists():
+        logger.info('Loading existing tokenizer...')
+        tokenizer.load(str(tokenizer_path))
     else:
-        tokenizer.train(['path/to/hindi/wikipedia/dump.xml'])
-        tokenizer.save('tokenizer.json')
+        logger.info('Training new tokenizer...')
+        # If tokenizer training requires a file, adjust the source accordingly.
+        # For now, you may consider reusing an existing file or dataset split.
+        tokenizer.train([])  # Update as needed, removing dependency on a dump file.
+        tokenizer.save(str(tokenizer_path))
     
     # Create dataset and dataloader
     dataset = HindiWikipediaDataset(
-        dump_path='path/to/hindi/wikipedia/dump.xml',
         tokenizer=tokenizer,
-        max_length=model_config.max_sequence_length
+        max_length=model_config.max_sequence_length,
+        cache_dir=str(processed_data_dir)
     )
     
     dataloader = DataLoader(
