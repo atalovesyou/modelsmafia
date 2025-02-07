@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 class HindiWikipediaDataset(Dataset):
     def __init__(self, config: 'ModelConfig', cache_dir: str = 'cache') -> None:
         """
-        Initialize the Hindi Wikipedia dataset using HuggingFace's datasets.
+        Initialize the Hindi Wikipedia dataset using soketlabs/bhasha-wiki-indic.
         
         Args:
             config: Model configuration containing vocab_size and max_sequence_length
@@ -27,9 +27,14 @@ class HindiWikipediaDataset(Dataset):
         self.tokenizer = self._initialize_tokenizer(cache_dir)
         logger.info(f'Tokenizer vocabulary size: {self.tokenizer.get_vocab_size()}')
         
-        # Load dataset
-        logger.info('***** Loading Hindi Wikipedia dataset...')
-        self.dataset = load_dataset('wikipedia', language='hi', date='20250101', cache_dir=cache_dir)['train']
+        # Load dataset from soketlabs/bhasha-wiki-indic
+        logger.info('***** Loading Hindi Wikipedia dataset from soketlabs/bhasha-wiki-indic...')
+        self.dataset = load_dataset(
+            "soketlabs/bhasha-wiki-indic",
+            "20231101.hi",
+            split="train",
+            cache_dir=cache_dir
+        )
         logger.info(f'***** Loaded {len(self.dataset)} articles from Hindi Wikipedia dataset.')
 
     def _initialize_tokenizer(self, cache_dir: str) -> Tokenizer:
@@ -53,8 +58,13 @@ class HindiWikipediaDataset(Dataset):
                 show_progress=True
             )
             
-            # Load some data for training
-            dataset = load_dataset('wikipedia', language='hi', date='20250101', cache_dir=cache_dir)['train']
+            # Load dataset for tokenizer training
+            dataset = load_dataset(
+                "soketlabs/bhasha-wiki-indic",
+                "20231101.hi",
+                split="train",
+                cache_dir=cache_dir
+            )
             
             # Train the tokenizer
             tokenizer.train_from_iterator(
@@ -72,6 +82,7 @@ class HindiWikipediaDataset(Dataset):
         return len(self.dataset)
 
     def __getitem__(self, idx: int) -> Dict[str, torch.Tensor]:
+        # Get the article text from the dataset
         article_text = self.dataset[idx]['text']
         
         # Encode the text
